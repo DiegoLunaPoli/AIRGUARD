@@ -1,0 +1,55 @@
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+
+# Entorno virtual
+venv/
+env/
+.env/
+.venv/
+
+# Variables de entorno
+.env
+
+# ── Base de datos y exportaciones ─────────────────────────
+# La carpeta data/ se conserva pero sin los archivos generados
+data/airguard.db
+data/*.csv
+data/*.db
+
+# ── Archivos temporales del sistema ───────────────────────
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+*.tmp
+*.bak
+
+# ── IDEs ──────────────────────────────────────────────────
+.vscode/settings.json
+.vscode/*.code-workspace
+.idea/
+*.suo
+*.user
+
+# ── Arduino / compilación ─────────────────────────────────
+firmware/build/
+*.elf
+*.bin
+*.map
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Tests temporales ──────────────────────────────────────
+tests/test_airguard.db
+tests/test_export.csv
