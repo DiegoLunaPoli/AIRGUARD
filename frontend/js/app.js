@@ -16,9 +16,10 @@ let estadoApp = {
   modo:             "ESPERANDO",
   estado:           "NORMAL",
   lectura:          0,
+  porcentaje:       0,
   linea_base:       1200,
-  umbral_precaucion: 1800,
-  umbral_alerta:    2500,
+  umbral_precaucion: 150,
+  umbral_alerta:    700,
   contador:         0,
   alertas_vistas:   0,
 };
@@ -84,8 +85,11 @@ async function actualizarDashboard() {
     // ── Header ───────────────────────────────────────────
     actualizarHeader(dato);
 
-    // ── Estado ambiental ─────────────────────────────────
-    actualizarEstado(dato.estado);
+    // ── Nivel de gases en la ruta ────────────────────────
+    actualizarEstado(dato.estado, dato);
+
+    // ── Panel de la unidad móvil ─────────────────────────
+    actualizarPanelRuta(dato, stats);
 
     // ── Valor ADC ────────────────────────────────────────
     actualizarValorADC(dato);
@@ -143,47 +147,105 @@ function actualizarHeader(dato) {
   modo.textContent = dato.modo || "ESPERANDO";
 }
 
-function actualizarEstado(estado) {
+function actualizarEstado(estado, dato = {}) {
   const circulo = document.getElementById("estado-circulo");
   const icono   = document.getElementById("estado-icono");
   const texto   = document.getElementById("estado-label");
   const desc    = document.getElementById("estado-descripcion");
+  const banner  = document.getElementById("banner-alarma");
+  const detalle = document.getElementById("banner-detalle");
 
   const cfg = {
-    "NORMAL":    { icono: "✅", label: "NORMAL",    desc: "Respuesta del sensor cercana a la línea base. Sin variaciones significativas detectadas." },
-    "PRECAUCIÓN":{ icono: "⚠️", label: "PRECAUCIÓN", desc: "Variación significativa respecto a la línea base. Monitorear evolución." },
-    "ALERTA":    { icono: "🚨", label: "ALERTA",    desc: "Se superó el umbral experimental alto. Variación importante de la respuesta del sensor." },
+    "NORMAL":    { icono: "✅", label: "AIRE NORMAL",  desc: "Sin variaciones significativas. El sensor de la motocicleta registra valores cercanos a la línea base." },
+    "PRECAUCIÓN":{ icono: "⚠️", label: "GAS ELEVADO", desc: "El MQ-2 registra una variación notable en la vía. Preste atención a la zona del recorrido." },
+    "ALERTA":    { icono: "🚨", label: "NIVEL ALTO",  desc: "Variación alta de gases en el recorrido. Verifique la zona y evite fuentes de ignición." },
   };
 
-  const c = cfg[estado] || cfg["NORMAL"];
+  let c = cfg[estado] || cfg["NORMAL"];
+
+  // Si el nivel está bajando, la fase de precaución es una recuperación,
+  // no un evento activo. Evita que parezca que el aire sigue en peligro.
+  if (estado === "PRECAUCIÓN" && dato.tendencia === "BAJANDO") {
+    c = {
+      icono: "💨",
+      label: "DISIPANDO",
+      desc: "El nivel está bajando. El aire se está recuperando; espere a volver a la línea base.",
+    };
+  }
   circulo.className     = `estado-circulo ${estado}`;
   icono.textContent     = c.icono;
   texto.textContent     = c.label;
   desc.textContent      = c.desc;
 
+  // Banner visible solo en ALERTA
+  if (banner) {
+    banner.className = estado === "ALERTA" ? "banner-alarma activa" : "banner-alarma";
+  }
+  if (detalle && estado === "ALERTA") {
+    const pct = (dato.porcentaje || 0).toFixed(1);
+    detalle.textContent = `Nivel ${pct}% del rango · ADC ${dato.lectura || 0} — Registro en ruta: verifique la zona y evite fuentes de ignición.`;
+  }
+
   // Color del body según estado (efecto sutil)
   document.body.style.setProperty("--estado-glow",
-    estado === "ALERTA"     ? "rgba(239,68,68,0.03)"    :
+    estado === "ALERTA"     ? "rgba(239,68,68,0.06)"    :
     estado === "PRECAUCIÓN" ? "rgba(245,158,11,0.02)"   : "transparent");
 }
 
-function actualizarValorADC(dato) {
-  const numEl  = document.getElementById("valor-adc-numero");
-  const varEl  = document.getElementById("valor-variacion");
-  const barraEl= document.getElementById("barra-adc-relleno");
-  const umbPEl = document.getElementById("barra-umbral-precaucion");
-  const umbAEl = document.getElementById("barra-umbral-alerta");
+/**
+ * Panel de la unidad móvil: muestra el contexto del detector montado en la
+ * motocicleta usando únicamente datos reales de la sesión (sin GPS simulado).
+ */
+function actualizarPanelRuta(dato, stats) {
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
 
-  numEl.textContent  = dato.lectura || 0;
-  numEl.className    = `valor-numero ${dato.estado || "NORMAL"}`;
+  const tendencia = dato.tendencia || "ESTABLE";
+  const texto = {
+    SUBIENDO: "↗ Subiendo",
+    BAJANDO:  "↘ Bajando",
+    ESTABLE:  "→ Estable",
+  }[tendencia] || "→ Estable";
+
+  set("ruta-nivel", `${(dato.porcentaje || 0).toFixed(1)}%`);
+  set("ruta-tendencia", texto);
+  set("ruta-muestras", stats.contador || 0);
+  set("ruta-tiempo", formatearDuracion(stats.duracion_s || 0));
+
+  const nivelEl = document.getElementById("ruta-nivel");
+  if (nivelEl) nivelEl.className = `ruta-metrica-valor nivel-${dato.estado || "NORMAL"}`;
+
+  const tendEl = document.getElementById("ruta-tendencia");
+  if (tendEl) tendEl.className = `ruta-metrica-valor tendencia-${tendencia.toLowerCase()}`;
+}
+
+function actualizarValorADC(dato) {
+  const pctEl   = document.getElementById("valor-porcentaje");
+  const pctNum  = document.getElementById("valor-porcentaje-numero");
+  const adcEl   = document.getElementById("valor-adc-numero");
+  const varEl   = document.getElementById("valor-variacion");
+  const barraEl = document.getElementById("barra-adc-relleno");
+  const umbPEl  = document.getElementById("barra-umbral-precaucion");
+  const umbAEl  = document.getElementById("barra-umbral-alerta");
+  const resEl   = document.getElementById("umbrales-resumen");
+
+  const lectura = dato.lectura || 0;
+  const porcentaje = dato.porcentaje !== undefined
+    ? dato.porcentaje
+    : (lectura / 4095) * 100;
+
+  pctNum.textContent = porcentaje.toFixed(1);
+  pctEl.className   = `valor-numero ${dato.estado || "NORMAL"}`;
+  adcEl.textContent = lectura;
 
   const pct = dato.variacion_pct || 0;
   varEl.textContent  = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}% respecto a línea base`;
   varEl.className    = `valor-variacion ${pct >= 0 ? "positivo" : "negativo"}`;
 
-  // Barra de progreso (0–4095)
-  const porcentaje = Math.min((dato.lectura / 4095) * 100, 100);
-  barraEl.style.width = `${porcentaje}%`;
+  // Barra de progreso (porcentaje del rango ADC)
+  barraEl.style.width = `${Math.min(porcentaje, 100)}%`;
 
   // Color de la barra según estado
   barraEl.style.background =
@@ -191,11 +253,18 @@ function actualizarValorADC(dato) {
     dato.estado === "PRECAUCIÓN" ? "linear-gradient(90deg, #f59e0b, #fbbf24)" :
                                    "linear-gradient(90deg, #10b981, #00d4ff)";
 
-  // Marcadores de umbral sobre la barra
-  const pctPrec = (estadoApp.umbral_precaucion / 4095) * 100;
-  const pctAlrt = (estadoApp.umbral_alerta / 4095) * 100;
+  // Marcadores de umbral sobre la barra (también en %)
+  const umbralP = estadoApp.umbral_precaucion || 0;
+  const umbralA = estadoApp.umbral_alerta || 0;
+  const pctPrec = (umbralP / 4095) * 100;
+  const pctAlrt = (umbralA / 4095) * 100;
   umbPEl.style.left = `${pctPrec}%`;
   umbAEl.style.left = `${pctAlrt}%`;
+
+  if (resEl) {
+    resEl.textContent =
+      `Umbrales → Precaución ${pctPrec.toFixed(1)}% · Alerta ${pctAlrt.toFixed(1)}%`;
+  }
 }
 
 function actualizarEstadisticas(stats, dato) {
@@ -367,9 +436,17 @@ async function cargarAlertas() {
 
 function renderizarAlertas(alertas) {
   const lista = document.getElementById("alertas-lista");
+  const resumen = document.getElementById("ultima-alerta");
+
+  if (resumen) {
+    resumen.textContent = alertas.length
+      ? `Último evento: ${alertas[0].tipo} · ${alertas[0].valor || 0} ADC · ${formatearTimestamp(alertas[0].timestamp)}`
+      : "Sin eventos en esta sesión";
+  }
+
   if (!lista) return;
   if (!alertas.length) {
-    lista.innerHTML = `<div style="color:var(--text-muted);font-size:12px;padding:12px;">Sin alertas registradas.</div>`;
+    lista.innerHTML = `<div style="color:var(--text-muted);font-size:12px;padding:12px;">Sin eventos registrados.</div>`;
     return;
   }
 

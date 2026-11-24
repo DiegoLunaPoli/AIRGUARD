@@ -46,8 +46,10 @@ _procesador  = ProcesadorDatos()
 _sesion_id   = None
 _ultimo_dato = {
     "lectura":       0,
+    "porcentaje":    0.0,
     "modo":          "ESPERANDO",
     "estado":        "NORMAL",
+    "tendencia":     "ESTABLE",
     "linea_base":    1200,
     "variacion_pct": 0.0,
     "timestamp":     None,
@@ -129,8 +131,10 @@ def _on_serial_data(datos: dict):
         # ── Actualizar estado global ───────────────────────
         _ultimo_dato.update({
             "lectura":       lectura,
+            "porcentaje":    resultado["porcentaje"],
             "modo":          modo,
             "estado":        resultado["estado"],
+            "tendencia":     resultado["tendencia"],
             "linea_base":    resultado["linea_base"],
             "variacion_pct": resultado["variacion_pct"],
             "timestamp":     datetime.now().isoformat(),

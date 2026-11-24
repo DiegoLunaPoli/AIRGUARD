@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AIRGUARD — Monitoreo Ambiental</title>
+  <title>AIRGUARD — Monitoreo de Gases Urbanos en Motocicleta</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -13,10 +13,10 @@
 ══════════════════════════════════════════════════════════ -->
 <header class="header">
   <div class="header-logo">
-    <div class="logo-icon">🛡️</div>
+    <div class="logo-icon">🏍️</div>
     <div class="logo-texto">
       <h1>AIRGUARD</h1>
-      <small>Sistema Experimental de Monitoreo Ambiental</small>
+      <small>Monitoreo urbano de gases · sensor MQ-2 en motocicleta</small>
     </div>
   </div>
 
@@ -32,81 +32,130 @@
   </div>
 </header>
 
+<!-- Aviso de nivel alto: solo se muestra cuando el estado es ALERTA -->
+<div id="banner-alarma" class="banner-alarma" role="alert">
+  <span class="banner-icono">🚨</span>
+  <div class="banner-texto">
+    <strong>NIVEL DE GASES ELEVADO EN LA RUTA</strong>
+    <span id="banner-detalle">Lectura alta registrada durante el recorrido — verifique la zona y evite fuentes de ignición.</span>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════════════════
      CONTENIDO PRINCIPAL
 ══════════════════════════════════════════════════════════ -->
 <main class="contenedor">
 
-  <!-- ── A. PANEL PRINCIPAL + INDICADOR AMBIENTAL ─────── -->
+  <!-- ── A. UNIDAD MÓVIL + PANEL PRINCIPAL ─────────────── -->
   <div class="seccion-titulo">
-    <span>📡</span> Panel de Monitoreo en Tiempo Real
+    <span>🏍️</span> Unidad Móvil — Monitoreo de Gases en Tiempo Real
+  </div>
+
+  <!-- Panel de contexto: detector instalado en la motocicleta -->
+  <div class="ruta-panel">
+    <div class="ruta-identidad">
+      <div class="ruta-moto" aria-hidden="true">🏍️</div>
+      <div>
+        <div class="ruta-titulo">UNIDAD MÓVIL · MOTO-01</div>
+        <div class="ruta-subtitulo">Sensor MQ-2 montado para muestrear los gases de la ciudad durante el recorrido</div>
+      </div>
+    </div>
+
+    <div class="ruta-flujo" aria-label="Flujo de datos del detector">
+      <span>MQ-2</span><b>→</b><span>ESP32</span><b>→</b><span>USB</span><b>→</b><span>Dashboard</span>
+    </div>
+
+    <div class="ruta-metricas">
+      <div class="ruta-metrica">
+        <div class="ruta-metrica-valor" id="ruta-nivel">—</div>
+        <div class="ruta-metrica-label">Nivel en ruta</div>
+      </div>
+      <div class="ruta-metrica">
+        <div class="ruta-metrica-valor" id="ruta-tendencia">—</div>
+        <div class="ruta-metrica-label">Tendencia</div>
+      </div>
+      <div class="ruta-metrica">
+        <div class="ruta-metrica-valor" id="ruta-muestras">0</div>
+        <div class="ruta-metrica-label">Muestras</div>
+      </div>
+      <div class="ruta-metrica">
+        <div class="ruta-metrica-valor" id="ruta-tiempo">0s</div>
+        <div class="ruta-metrica-label">Tiempo en ruta</div>
+      </div>
+    </div>
   </div>
 
   <div class="grid-3">
 
-    <!-- Indicador de estado -->
+    <!-- Indicador de nivel de gases -->
     <div class="card">
-      <div class="card-titulo"><span class="icono">🌡️</span> Estado Ambiental Experimental</div>
+      <div class="card-titulo"><span class="icono">🌫️</span> Calidad del Aire en la Ruta</div>
       <div class="estado-container">
         <div id="estado-circulo" class="estado-circulo NORMAL">
           <span id="estado-icono" class="estado-icono">✅</span>
-          <span id="estado-label" class="estado-texto">NORMAL</span>
+          <span id="estado-label" class="estado-texto">AIRE NORMAL</span>
         </div>
         <div id="estado-descripcion" class="estado-descripcion">
-          Esperando datos del sensor...
+          Esperando datos del sensor instalado en la motocicleta...
         </div>
+        <div id="ultima-alerta" class="ultima-alerta">Sin eventos en esta sesión</div>
         <small style="font-size:10px;color:var(--text-muted);display:block;margin-top:12px;">
-          ⚠️ Indicador experimental — no certifica calidad del aire
+          ⚠️ Monitoreo experimental — no certifica concentración de gases (sin ppm)
         </small>
       </div>
     </div>
 
-    <!-- Valor ADC -->
+    <!-- Valor principal: porcentaje de respuesta -->
     <div class="card">
-      <div class="card-titulo"><span class="icono">📊</span> Respuesta del Sensor MQ-2</div>
+      <div class="card-titulo"><span class="icono">🔥</span> Nivel de Gases Detectados (MQ-2)</div>
       <div class="valor-adc">
-        <div id="valor-adc-numero" class="valor-numero">0</div>
-        <div class="valor-unidad">Unidades ADC (12 bits) · Rango: 0 – 4095</div>
+        <div id="valor-porcentaje" class="valor-numero">
+          <span id="valor-porcentaje-numero">0.0</span><span class="valor-porcentaje-simbolo">%</span>
+        </div>
+        <div class="valor-unidad">RESPUESTA RELATIVA (% DEL RANGO ADC)</div>
+        <div class="valor-adc-detalle">ADC: <span id="valor-adc-numero">0</span> / 4095 · 12 bits</div>
         <div id="valor-variacion" class="valor-variacion">— variación respecto a línea base</div>
       </div>
 
-      <!-- Barra de progreso -->
+      <!-- Barra de progreso en porcentaje -->
       <div class="barra-adc-container">
         <div class="barra-adc-labels">
-          <span>0</span>
-          <span>1024</span>
-          <span>2048</span>
-          <span>3072</span>
-          <span>4095</span>
+          <span>0%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
         </div>
         <div class="barra-adc" style="position:relative;">
           <div id="barra-adc-relleno" class="barra-adc-relleno" style="width:0%"></div>
           <div id="barra-umbral-precaucion" class="barra-umbral precaucion"></div>
           <div id="barra-umbral-alerta"     class="barra-umbral alerta"></div>
         </div>
+        <div id="umbrales-resumen" class="umbrales-resumen">Precaución — · Alerta —</div>
       </div>
 
       <div style="font-size:10px;color:var(--text-muted);margin-top:8px;">
-        Las unidades ADC representan la respuesta general del sensor.
-        No corresponden a concentraciones de gas sin calibración previa.
+        El porcentaje refleja la respuesta general del MQ-2 ante gases presentes en
+        el entorno urbano (metano, GLP, propano, vapores y humo). No identifica el
+        gas ni equivale a ppm: para eso haría falta calibración con gas de referencia.
       </div>
     </div>
 
     <!-- Estadísticas rápidas -->
     <div class="card">
-      <div class="card-titulo"><span class="icono">📈</span> Estadísticas de Sesión</div>
+      <div class="card-titulo"><span class="icono">📈</span> Estadísticas del Recorrido</div>
       <div class="stat-grid">
         <div class="stat-item">
           <div class="stat-valor" id="stat-actual">0</div>
-          <div class="stat-label">Actual</div>
+          <div class="stat-label">Lectura actual</div>
         </div>
         <div class="stat-item">
           <div class="stat-valor" id="stat-min">0</div>
-          <div class="stat-label">Mínimo</div>
+          <div class="stat-label">Mínimo en ruta</div>
         </div>
         <div class="stat-item">
           <div class="stat-valor" id="stat-max">0</div>
-          <div class="stat-label">Máximo</div>
+          <div class="stat-label">Pico en ruta</div>
         </div>
         <div class="stat-item">
           <div class="stat-valor" id="stat-prom">0</div>
@@ -114,7 +163,7 @@
         </div>
         <div class="stat-item">
           <div class="stat-valor" id="stat-linea">1200</div>
-          <div class="stat-label">Línea Base</div>
+          <div class="stat-label">Base (aire limpio)</div>
         </div>
         <div class="stat-item">
           <div class="stat-valor" id="stat-contador">0</div>
@@ -122,7 +171,7 @@
         </div>
       </div>
       <div style="margin-top:14px;padding:10px;background:var(--bg-secondary);border-radius:var(--radio-sm);">
-        <div style="font-size:10px;color:var(--text-muted);">DURACIÓN DE SESIÓN</div>
+        <div style="font-size:10px;color:var(--text-muted);">TIEMPO EN RUTA</div>
         <div id="stat-duracion" style="font-size:16px;font-weight:700;color:var(--color-cian);font-family:var(--fuente-mono);margin-top:4px;">0s</div>
       </div>
     </div>
@@ -157,42 +206,42 @@
 
   <!-- ── B. CAPACIDADES SENSOR MQ-2 ───────────────────── -->
   <div class="seccion-titulo" style="margin-top:32px;">
-    <span>🔬</span> Sensor MQ-2 — Sustancias de Sensibilidad
+    <span>🔥</span> Gases del Entorno Urbano (sin identificarlos)
   </div>
 
   <div class="card">
-    <div class="card-titulo"><span class="icono">ℹ️</span> Respuesta del Sensor por Sustancia</div>
+    <div class="card-titulo"><span class="icono">ℹ️</span> Respuesta del MQ-2 ante Sustancias de la Vía</div>
 
     <div class="gas-grid">
       <div class="gas-card">
         <div class="gas-icono">🔥</div>
         <div class="gas-nombre">GLP</div>
         <div class="gas-formula">C₃H₈ / C₄H₁₀</div>
-        <div class="gas-desc">Gas licuado de petróleo (propano/butano). Alta sensibilidad del MQ-2.</div>
+        <div class="gas-desc">GLP usado en cocinas y estaciones de servicio. Alta sensibilidad del MQ-2.</div>
       </div>
       <div class="gas-card">
         <div class="gas-icono">⛽</div>
         <div class="gas-nombre">Propano</div>
         <div class="gas-formula">C₃H₈</div>
-        <div class="gas-desc">Gas inflamable presente en tanques domésticos y combustibles.</div>
+        <div class="gas-desc">Combustible presente en tanques y puntos de abastecimiento urbanos.</div>
       </div>
       <div class="gas-card">
         <div class="gas-icono">🌿</div>
         <div class="gas-nombre">Metano</div>
         <div class="gas-formula">CH₄</div>
-        <div class="gas-desc">Gas natural. El MQ-2 responde ante concentraciones elevadas.</div>
+        <div class="gas-desc">Gas natural de redes y vehículos. El MQ-2 responde ante concentraciones elevadas.</div>
       </div>
       <div class="gas-card">
         <div class="gas-icono">💨</div>
         <div class="gas-nombre">Humo</div>
         <div class="gas-formula">Partículas</div>
-        <div class="gas-desc">Partículas de combustión. Genera una variación notable en la respuesta.</div>
+        <div class="gas-desc">Humo de escape y combustión urbana. Genera una variación notable en la respuesta.</div>
       </div>
       <div class="gas-card">
         <div class="gas-icono">🍷</div>
         <div class="gas-nombre">Alcohol</div>
         <div class="gas-formula">C₂H₅OH</div>
-        <div class="gas-desc">Vapores de etanol y solventes. Sensibilidad moderada del sensor.</div>
+        <div class="gas-desc">Vapores de etanol y solventes en la vía. Sensibilidad moderada del sensor.</div>
       </div>
     </div>
 
@@ -250,38 +299,39 @@
     </p>
   </div>
 
-  <!-- ── D. ALERTAS Y CONFIGURACIÓN ───────────────────── -->
+  <!-- ── D. EVENTOS Y CONFIGURACIÓN ───────────────────── -->
   <div class="seccion-titulo" style="margin-top:32px;">
-    <span>🚨</span> Sistema de Alertas
+    <span>🔔</span> Eventos del Recorrido
   </div>
 
   <div class="grid-2">
 
-    <!-- Alertas recientes -->
+    <!-- Eventos recientes -->
     <div class="card">
-      <div class="card-titulo"><span class="icono">🔔</span> Alertas Recientes</div>
+      <div class="card-titulo"><span class="icono">🔔</span> Eventos Recientes</div>
       <div id="alertas-lista" class="alertas-lista">
-        <div style="color:var(--text-muted);font-size:12px;padding:12px;">Sin alertas registradas.</div>
+        <div style="color:var(--text-muted);font-size:12px;padding:12px;">Sin eventos registrados.</div>
       </div>
     </div>
 
     <!-- Configuración de umbrales -->
     <div class="card">
-      <div class="card-titulo"><span class="icono">⚙️</span> Configuración de Umbrales</div>
+      <div class="card-titulo"><span class="icono">⚙️</span> Umbrales de Nivel de Gases</div>
 
       <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">
-        Los umbrales son valores experimentales en unidades ADC (0–4095).
-        Ajústalos según el comportamiento observado en tu entorno.
+        Umbrales calibrados con la prueba larga: aire limpio ≤ 45 ADC, primer
+        aviso ~150 ADC, gas sostenido 1500–1825 ADC. Para salir de un estado
+        el nivel debe bajar al 85 % del umbral (histéresis), evitando parpadeos.
       </p>
 
       <div class="config-form">
         <div class="config-grupo">
-          <label>⚠️ Precaución (ADC)</label>
-          <input type="number" id="inp-precaucion" value="1800" min="100" max="4000" />
+          <label>⚠️ Nivel elevado (ADC)</label>
+          <input type="number" id="inp-precaucion" value="150" min="1" max="4000" />
         </div>
         <div class="config-grupo">
-          <label>🚨 Alerta (ADC)</label>
-          <input type="number" id="inp-alerta" value="2500" min="200" max="4095" />
+          <label>🚨 Nivel alto (ADC)</label>
+          <input type="number" id="inp-alerta" value="700" min="2" max="4095" />
         </div>
         <button class="btn btn-primario" id="btn-aplicar-umbrales">
           ✅ Aplicar
@@ -313,20 +363,20 @@
 
   <!-- ── E. HISTORIAL ──────────────────────────────────── -->
   <div class="seccion-titulo" style="margin-top:32px;">
-    <span>🗂️</span> Historial de Datos
+    <span>🗂️</span> Historial de Lecturas del Recorrido
   </div>
 
   <div class="grid-2">
 
     <div class="card">
-      <div class="card-titulo"><span class="icono">📋</span> Últimas Mediciones</div>
+      <div class="card-titulo"><span class="icono">📋</span> Últimas Lecturas</div>
       <div style="overflow-x:auto;max-height:300px;overflow-y:auto;">
         <table class="historial-tabla">
           <thead>
             <tr>
-              <th>Timestamp</th>
-              <th>Lectura</th>
-              <th>Estado</th>
+              <th>Hora</th>
+              <th>Lectura ADC</th>
+              <th>Nivel</th>
               <th>Modo</th>
             </tr>
           </thead>
@@ -361,9 +411,9 @@
 
   <!-- ── PIE ───────────────────────────────────────────── -->
   <div style="text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid var(--borde);color:var(--text-muted);font-size:11px;">
-    <strong style="color:var(--color-cian)">AIRGUARD</strong> v1.0.0 · Sistema Experimental de Monitoreo Ambiental ·
+    <strong style="color:var(--color-cian)">AIRGUARD</strong> v1.0.0 · Detector de gases urbano montado en motocicleta ·
     Prototipo Universitario · Solo para uso educativo y demostrativo ·
-    Los datos mostrados no constituyen mediciones certificadas de calidad del aire.
+    Los datos mostrados son la respuesta relativa del sensor MQ-2, no mediciones certificadas.
   </div>
 
 </main>

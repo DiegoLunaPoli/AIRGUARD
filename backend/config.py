@@ -27,13 +27,20 @@ SERIAL_RETRY_S  = 5            # Segundos entre intentos de reconexión
 LINEA_BASE_INICIAL = 1200
 
 # Umbrales experimentales (configurables desde el dashboard)
-UMBRAL_PRECAUCION = 1800   # Variación significativa
-UMBRAL_ALERTA     = 2500   # Variación alta
+UMBRAL_PRECAUCION = 150    # Nivel elevado de gases (~3,7 % del rango ADC)
+UMBRAL_ALERTA     = 700    # Nivel alto de gases (~17,1 % del rango ADC)
 
 # ── Estadísticas y alertas ─────────────────────────────────
 HISTORIAL_MAX        = 500    # Máximo de puntos en memoria para gráfica
-ALERTA_HISTÉRESIS    = 200    # El estado solo baja cuando cae HISTÉRESIS por debajo del umbral
+
+# Histéresis como FRACCIÓN del umbral (no valor fijo). Así funciona
+# también cuando los umbrales se cambian desde la API:
+#   salir de ALERTA     cuando lectura < 0,85 * UMBRAL_ALERTA     (595)
+#   salir de PRECAUCIÓN cuando lectura < 0,85 * UMBRAL_PRECAUCION (127)
+# Con una histéresis fija de 200 los estados quedaban colgados.
+HISTERESIS_SALIDA    = 0.85
 ALERTA_MIN_INTERVALO = 10     # Segundos mínimos entre dos alertas del mismo tipo
+MUESTRAS_TENDENCIA   = 6      # Muestras para detectar si el nivel sube o baja
 
 # ── Nombre del sistema ─────────────────────────────────────
 NOMBRE_SISTEMA  = "AIRGUARD"

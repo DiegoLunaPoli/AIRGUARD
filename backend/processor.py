@@ -8,7 +8,8 @@ import logging
 from collections import deque
 from config import (
     LINEA_BASE_INICIAL, UMBRAL_PRECAUCION, UMBRAL_ALERTA,
-    HISTORIAL_MAX, ALERTA_HISTÉRESIS, ALERTA_MIN_INTERVALO
+    HISTORIAL_MAX, HISTERESIS_SALIDA, ALERTA_MIN_INTERVALO,
+    MUESTRAS_TENDENCIA
 )
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,9 @@ class ProcesadorDatos:
     def __init__(self):
         # Historial en memoria para gráfica (deque tiene tamaño fijo)
         self.historial = deque(maxlen=HISTORIAL_MAX)
+
+        # Últimas muestras para saber si el nivel está subiendo o bajando
+        self._tendencia = deque(maxlen=MUESTRAS_TENDENCIA)
 
         # Línea base adaptativa
         self.linea_base    = LINEA_BASE_INICIAL
@@ -83,6 +87,16 @@ class ProcesadorDatos:
         else:
             variacion_pct = 0.0
 
+        # ── Tendencia (¿sube o baja el nivel?) ─────────────────────
+        self._tendencia.append(lectura)
+        tendencia = "ESTABLE"
+        if len(self._tendencia) >= MUESTRAS_TENDENCIA:
+            pendiente = self._tendencia[-1] - self._tendencia[0]
+            if pendiente > 5:
+                tendencia = "SUBIENDO"
+            elif pendiente < -5:
+                tendencia = "BAJANDO"
+
         # ── Determinar estado con histéresis ───────────────────────
         nuevo_estado = self._calcular_estado(lectura)
 
@@ -116,8 +130,10 @@ class ProcesadorDatos:
 
         return {
             "lectura":       lectura,
+            "porcentaje":    round(lectura / 4095 * 100.0, 1),
             "modo":          modo,
             "estado":        nuevo_estado,
+            "tendencia":     tendencia,
             "linea_base":    round(self.linea_base, 1),
             "variacion_pct": round(variacion_pct, 2),
             "minimo":        self.valor_min,
@@ -130,9 +146,16 @@ class ProcesadorDatos:
 
     def _calcular_estado(self, lectura: int) -> str:
         """
-        Determina el estado con histéresis para evitar
-        oscilaciones rápidas entre NORMAL / PRECAUCIÓN / ALERTA.
+        Determina el estado con histéresis proporcional al umbral.
+
+        La histéresis evita oscilaciones rápidas (subir/bajar cada muestra)
+        pero se calcula como una FRACCIÓN del umbral, no como un valor fijo.
+        Con una resta fija de 200, umbrales bajos como 120 hacían imposible
+        volver a NORMAL (120 - 200 = -80).
         """
+        salida_precaucion = self.umbral_precaucion * HISTERESIS_SALIDA
+        salida_alerta     = self.umbral_alerta     * HISTERESIS_SALIDA
+
         if self.estado_actual == "NORMAL":
             if lectura >= self.umbral_alerta:
                 return "ALERTA"
@@ -143,13 +166,13 @@ class ProcesadorDatos:
         elif self.estado_actual == "PRECAUCIÓN":
             if lectura >= self.umbral_alerta:
                 return "ALERTA"
-            # Bajar a NORMAL solo si cae HISTÉRESIS por debajo del umbral
-            elif lectura < (self.umbral_precaucion - ALERTA_HISTÉRESIS):
+            # Volver a NORMAL al bajar 15 % por debajo del umbral de entrada
+            elif lectura < salida_precaucion:
                 return "NORMAL"
             return "PRECAUCIÓN"
 
         else:  # ALERTA
-            if lectura < (self.umbral_alerta - ALERTA_HISTÉRESIS):
+            if lectura < salida_alerta:
                 # Bajar a PRECAUCIÓN si aún está sobre el umbral de precaución
                 if lectura >= self.umbral_precaucion:
                     return "PRECAUCIÓN"

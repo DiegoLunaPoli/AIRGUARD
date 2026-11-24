@@ -1,5 +1,5 @@
 
-#define MODO_DEMO true
+#define MODO_DEMO 0
 
 // ── Configuración del ADC ──────────────────────────────────
 #define PIN_SENSOR     34    // GPIO34 — solo lectura (input only)

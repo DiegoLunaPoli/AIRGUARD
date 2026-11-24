@@ -8,7 +8,7 @@
 
 ## Descripción del proyecto
 
-AIRGUARD es un prototipo experimental que recopila la respuesta analógica del sensor MQ-2 mediante un ESP32, transmite los datos a una computadora por USB y los presenta en un dashboard web local con gráficas en tiempo real, estadísticas, sistema de alertas e historial persistente.
+AIRGUARD es un prototipo experimental de **monitoreo urbano de gases** basado en una unidad móvil: un sensor MQ-2 adaptado en una motocicleta recopila la respuesta del aire durante el recorrido, un ESP32 transmite los datos a una computadora por USB y un dashboard web local presenta gráficas en tiempo real, estadísticas del recorrido, eventos e historial persistente.
 
 > **Aviso importante:** Este sistema es experimental y educativo. Los datos mostrados **no** constituyen mediciones certificadas de calidad del aire. El sensor MQ-2 entrega una respuesta analógica general ante múltiples sustancias y no permite identificar gases individuales ni concentraciones sin calibración específica.
 
@@ -16,7 +16,7 @@ AIRGUARD es un prototipo experimental que recopila la respuesta analógica del s
 
 ## Objetivo general
 
-Demostrar la integración de hardware embebido (ESP32 + MQ-2), comunicación serial USB, backend Python y visualización web en un sistema de monitoreo ambiental local.
+Demostrar la integración de hardware embebido (ESP32 + MQ-2), comunicación serial USB, backend Python y visualización web en un detector móvil montado en motocicleta para monitorear los gases de la ciudad.
 
 ## Objetivos específicos
 
@@ -36,6 +36,7 @@ Demostrar la integración de hardware embebido (ESP32 + MQ-2), comunicación ser
 | Sensor MQ-2 Flying Fish | Sensor semiconductor de gases |
 | Cable USB | Comunicación y alimentación |
 | Protoboard + cables Dupont | Conexiones del circuito |
+| Motocicleta | Soporte móvil del detector para los recorridos urbanos |
 | Computador Windows | Servidor local y dashboard |
 
 ---
@@ -43,7 +44,7 @@ Demostrar la integración de hardware embebido (ESP32 + MQ-2), comunicación ser
 ## Arquitectura del sistema
 
 ```
-MQ-2
+MQ-2 (montado en la motocicleta)
  │
  ▼
 ESP32 (firmware Arduino C++)
@@ -52,7 +53,7 @@ ESP32 (firmware Arduino C++)
 Python / Flask (backend)
  │  API REST HTTP local
  ▼
-Dashboard web (HTML + CSS + JS)
+Dashboard web · unidad móvil en ruta (HTML + CSS + JS)
 http://127.0.0.1:5000
 ```
 
@@ -107,7 +108,7 @@ AIRGUARD/
    - Seleccionar placa: `ESP32 Dev Module`
    - Seleccionar puerto: `COM5` (o el que aparezca)
    - Compilar y subir
-   - Por defecto el firmware inicia en **MODO DEMO** (sin sensor)
+   - El firmware se carga en **MODO SENSOR** (lee el MQ-2 por GPIO34)
 
 4. **Iniciar el sistema:**
    - Doble clic en `iniciar_airguard.bat`
@@ -120,10 +121,12 @@ AIRGUARD/
 
 ## Modos de operación del firmware
 
-### MODO DEMO (predeterminado)
+El firmware actual está configurado en **MODO SENSOR** (`#define MODO_DEMO 0`).
+
+### MODO DEMO
 
 ```cpp
-#define MODO_DEMO true
+#define MODO_DEMO 1
 ```
 
 Genera datos simulados con línea base estable y picos periódicos para activar los tres estados (NORMAL, PRECAUCIÓN, ALERTA). **No requiere sensor conectado.** Usar siempre durante desarrollo y demostración mientras no se verifique el circuito.
@@ -131,10 +134,10 @@ Genera datos simulados con línea base estable y picos periódicos para activar 
 ### MODO SENSOR
 
 ```cpp
-#define MODO_DEMO false
+#define MODO_DEMO 0
 ```
 
-Lee el ADC en GPIO34. **Solo usar cuando el divisor de tensión esté instalado y verificado eléctricamente.**
+Lee el ADC en GPIO34. **Solo usar cuando el divisor de tensión esté instalado y verificado eléctricamente.** Con R1=10 kΩ y R2=15 kΩ, una salida AO de 5 V queda en 3,0 V en GPIO34.
 
 ---
 
@@ -205,7 +208,9 @@ Los tres estados del sistema son **umbrales experimentales configurables**, no p
 | **PRECAUCIÓN** | Umbral precaución ≤ lectura < umbral alerta | Variación significativa detectada |
 | **ALERTA** | Lectura ≥ umbral alerta | Variación alta de la respuesta del sensor |
 
-Los umbrales por defecto son 1800 (precaución) y 2500 (alerta) en unidades ADC. Se pueden ajustar desde el dashboard.
+Los umbrales por defecto son **150 (precaución, ~3,7 %)** y **700 (alerta, ~17,1 %)** en unidades ADC, calibrados con una prueba larga con encendedor: aire limpio ≤ 45 ADC, primer aviso ~150 ADC y gas sostenido 1500–1825 ADC.
+
+La histéresis es proporcional (`HISTERESIS_SALIDA = 0,85`) y no un valor fijo: para salir de ALERTA hace falta bajar por debajo de 595 ADC y para salir de PRECAUCIÓN por debajo de 127 ADC. Antes se usaba una resta fija de 200, que hacía imposible volver a NORMAL con umbrales bajos (120 − 200 = −80). Cuando el nivel está bajando, la fase de precaución se muestra como **DISIPANDO** en lugar de **GAS ELEVADO**. Se pueden ajustar desde el dashboard.
 
 ---
 

@@ -1,0 +1,22 @@
+{
+  "titulo": "AIRGUARD — Monitoreo Ambiental",
+  "url": "http://127.0.0.1:5000/",
+  "conexion": "ESP32 CONECTADO",
+  "modo": "SENSOR",
+  "estado": "VENTILANDO",
+  "banner_alarma_visible": false,
+  "ultima_alerta": "Última alerta: PRECAUCIÓN · 577 ADC · 24/11/26, 16:47:42",
+  "lectura": "477",
+  "porcentaje": "11.6",
+  "umbrales_resumen": "Umbrales → Precaución 3.7% · Alerta 17.1%",
+  "variacion": "+17.5% respecto a línea base",
+  "min": "0",
+  "max": "1337",
+  "promedio": "453.2",
+  "linea_base": "406.1",
+  "contador": "26",
+  "duracion": "15s",
+  "umbral_precaucion": "150",
+  "umbral_alerta": "700",
+  "filas_historial": 50
+}
